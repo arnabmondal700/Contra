@@ -1,0 +1,155 @@
+﻿# Cline Rules - Contra Clone
+
+## Project Overview
+
+A browser-based 2D side-scrolling run-and-gun game inspired by the classic NES Contra, built with Phaser 3.9x (Arcade Physics), TypeScript 5.x (strict mode), Vite, Vitest, and Playwright.
+
+## Tech Stack
+
+- Framework: Phaser 3.9x (Arcade Physics)
+- Language: TypeScript 5.x (strict mode)
+- Build: Vite 5
+- Unit Tests: Vitest
+- E2E Tests: Playwright
+- Hosting: Cloudflare Pages
+- CI/CD: GitHub Actions
+
+## Commands
+
+- npm run dev: Vite dev server (port 3000)
+- npm run build: tsc + vite build
+- npm run preview: Vite preview
+- npm run lint: tsc --noEmit
+- npm run test: Vitest run
+- npm run test:watch: Vitest watch mode
+- npm run test:e2e: Playwright smoke tests
+
+## Coding Conventions
+
+### Naming
+
+- Classes / Components: PascalCase (StageScene, Player, MachineGun)
+- Interfaces: PascalCase with optional I prefix (IState, IWeaponStrategy, EventMap)
+- Methods / Functions: camelCase (transition, acquire, setupColliders)
+- Variables: camelCase (activeCount, currentState)
+- Constants / Enums: UPPER_SNAKE_CASE (GAME_WIDTH, PLAYER_SPEED)
+- Files: PascalCase for classes, camelCase for utilities (StateMachine.ts, playerInput.ts)
+- Scene keys: lowercase (boot, stage, mainmenu)
+- Event names: UPPER_SNAKE_CASE (PLAYER_DIED, STAGE_COMPLETED)
+
+### Formatting
+
+- Indentation: 2 spaces (no tabs)
+- Quotes: Double quotes for strings
+- Semicolons: Required
+- Trailing commas: Yes on multiline objects/arrays
+- Braces: Same line
+- Arrow functions: Prefer over function keyword for callbacks
+- Explicit return types: Required on all public methods and exported functions
+- const over let: Always use const unless rebinding is needed
+
+### File Structure
+
+Each file starts with a comment identifying its path:
+- // scenes/BootScene.ts
+- // core/StateMachine.ts
+
+### Imports
+
+- Use relative imports with explicit extensions
+- Group: 3rd party then internal (separated by blank line)
+- Named exports preferred over default exports
+
+Example:
+import Phaser from "phaser";
+import { ServiceLocator } from "../core/ServiceLocator";
+
+### TypeScript
+
+- strict mode enabled - no any types (use unknown instead)
+- Prefer interface over type for object shapes
+- Use type for unions, intersections
+- No unused locals or parameters
+- Every code path must return (noImplicitReturns)
+
+## Architecture Patterns
+
+### Dependency Rules
+1. Systems depend on Entities and Managers. Entities never import Scenes or Systems.
+2. Managers are singletons via ServiceLocator, registered in BootScene.
+3. Event Bus is the only cross-layer dependency.
+
+### Design Patterns
+
+- Service Locator (core/ServiceLocator.ts): Static registry for manager singletons
+- State Machine (core/StateMachine.ts): Generic FSM for Player, Enemy, Boss
+- Observer / Event Bus (core/EventBus.ts): Typed event emitter
+- Object Pool (core/ObjectPool.ts): Reuses bullets, explosions, particles
+- Factory (EnemyFactory.ts): Maps type strings to constructors
+- Strategy: Weapons use IWeaponStrategy; AI uses IAiBehavior
+
+### Scene Flow
+Boot -> Preload -> MainMenu -> Stage -> Boss -> Victory/GameOver
+HudScene runs parallel via scene.launch
+
+### Entity Hierarchy
+BaseEntity (Phaser.Physics.Arcade.Sprite, implements IEntity)
+  - Player (StateMachine, WeaponSystem, i-frames, lives)
+  - Enemy (abstract: IAiBehavior + StateMachine)
+  - Boss (abstract: multi-phase StateMachine)
+  - Pickup (overlap-triggered effect)
+  - Projectile (pooled, owner tracking)
+
+### Systems
+CollisionSystem, SpawnSystem, WeaponSystem, DamageSystem, CameraSystem
+
+### Managers
+AssetManager, AudioManager, SaveManager, SceneManager
+
+## Performance Constraints
+
+- Arcade Physics only (not Matter.js)
+- No Math.random() in gameplay - use seeded RNG
+- Stage-specific atlas loading
+- Object pooling for bullets, explosions, particles
+- Max 12 concurrent enemies, 60 pooled bullets
+- Texture atlases max 2048x2048
+- Desktop: 60 FPS | Mobile: 30 FPS min
+
+## Testing
+
+- Unit tests (Vitest): Pure logic (StateMachine, EventBus, ObjectPool, WeaponSystem, SaveManager)
+- E2E tests (Playwright): Scene transitions, canvas rendering
+- Test files in tests/unit/ or tests/e2e/
+
+## Git Commit Format
+
+- feat(player): add jump mechanics
+- feat(weapon): implement spread gun
+- fix(enemy): fix spawn timing issue
+- refactor(audio): simplify manager
+
+## Key Rules
+
+1. Read Memory Bank before architectural decisions or starting new phases.
+2. Never break dependency rules: Systems -> Entities/Managers.
+3. Register EventBus handlers in create() and unregister in shutdown().
+4. Use ServiceLocator for managers.
+5. Understand existing code before adding new files.
+6. Use seeded RNG in gameplay.
+7. Check Progress file before starting work.
+8. Run lint and test after making changes.
+9. New entities extend BaseEntity (extends Phaser.Physics.Arcade.Sprite).
+10. Weapons implement IWeaponStrategy; AI implements IAiBehavior.
+11. Use console.log("[SceneName] message") format in scenes.
+12. Production build must succeed before task completion.
+
+## Definition of Done
+
+- Build passes (npm run build)
+- Lint passes (npm run lint)
+- Tests pass (npm run test)
+- No console errors
+- No FPS regression
+- Documentation updated
+- Code follows conventions

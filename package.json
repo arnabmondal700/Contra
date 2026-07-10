@@ -1,0 +1,19 @@
+{
+  "name": "contra-clone",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Contra NES browser clone built with Phaser 3 and TypeScript",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "lint": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test"
+  },
+  "keywords": ["phaser", "contra", "game", "typescript"],
+  "author": "",
+  "license": "MIT"
+}
