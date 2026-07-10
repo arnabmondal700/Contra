@@ -13,6 +13,7 @@ import { LaserGun } from "../weapons/LaserGun";
 import { FireGun } from "../weapons/FireGun";
 import { Pickup } from "../entities/pickups/Pickup";
 import { getStageConfig, StageConfig } from "../data/StageData";
+import { AudioManager } from "../managers/AudioManager";
 
 export class StageScene extends Phaser.Scene {
   private inputSystem!: InputSystem;
@@ -61,6 +62,9 @@ export class StageScene extends Phaser.Scene {
       return;
     }
 
+    AudioManager.getInstance().init(this);
+    AudioManager.getInstance().resumeAudioContext();
+
     // Set background color based on stage theme
     this.cameras.main.setBackgroundColor(config.theme.skyColor);
 
@@ -92,6 +96,11 @@ export class StageScene extends Phaser.Scene {
     // Set up spawn system
     this.spawnSystem = new SpawnSystem(this, config, this.enemies, this.pickups);
     this.spawnSystem.spawnPickups();
+
+    // Launch touch controls on touch devices
+    if (this.inputSystem.hasTouchInput()) {
+      this.inputSystem.createTouchControls();
+    }
 
     // Launch HUD overlay
     this.scene.launch("hud", { playerCount: this.playerCount });

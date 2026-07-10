@@ -9,6 +9,7 @@ import { InputSystem } from "../systems/InputSystem";
 import { Player } from "../entities/player/Player";
 import { EventBus } from "../core/EventBus";
 import { getStageConfig } from "../data/StageData";
+import { AudioManager } from "../managers/AudioManager";
 
 export class BossScene extends Phaser.Scene {
   private collisionSystem!: CollisionSystem;
@@ -39,6 +40,8 @@ export class BossScene extends Phaser.Scene {
 
   create(): void {
     const { width, height } = this.cameras.main;
+    AudioManager.getInstance().init(this);
+    AudioManager.getInstance().resumeAudioContext();
 
     // Get stage config for theme
     const stageConfig = getStageConfig(this.stageId);
@@ -105,6 +108,11 @@ export class BossScene extends Phaser.Scene {
     this.cameraSystem.setLevelBounds(new Phaser.Geom.Rectangle(0, 0, width, height));
     this.cameraSystem.setPlayers(this.players);
     this.cameraSystem.update();
+
+    // Launch touch controls on touch devices
+    if (this.inputSystem.hasTouchInput()) {
+      this.inputSystem.createTouchControls();
+    }
 
     // Launch HUD overlay
     this.scene.launch("hud", { playerCount: this.playerCount });

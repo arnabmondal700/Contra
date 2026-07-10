@@ -8,6 +8,8 @@ import { BossScene } from "../scenes/BossScene";
 import { VictoryScene } from "../scenes/VictoryScene";
 import { GameOverScene } from "../scenes/GameOverScene";
 import { HudScene } from "../scenes/HudScene";
+import { PauseScene } from "../scenes/PauseScene";
+import { SettingsMenuScene } from "../scenes/SettingsMenuScene";
 
 export const GAME_CONFIG: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -26,7 +28,7 @@ export const GAME_CONFIG: Phaser.Types.Core.GameConfig = {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
-  scene: [BootScene, PreloadScene, MainMenuScene, StageScene, BossScene, VictoryScene, GameOverScene, HudScene],
+  scene: [BootScene, PreloadScene, MainMenuScene, StageScene, BossScene, VictoryScene, GameOverScene, HudScene, PauseScene, SettingsMenuScene],
   input: {
     keyboard: true,
     gamepad: true,

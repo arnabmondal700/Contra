@@ -11,6 +11,12 @@ export interface SaveData {
   checkpoints: Record<string, { stageId: string; x: number; y: number }>;
 }
 
+export interface SettingsData {
+  musicVolume: number;
+  sfxVolume: number;
+  controlScheme: "keyboard" | "gamepad";
+}
+
 const CURRENT_VERSION = 1;
 const STORAGE_KEY = "contra-clone-save";
 
@@ -49,8 +55,17 @@ export class SaveManager {
     return { ...this.data };
   }
 
+  loadSettings(): SettingsData {
+    return { ...this.data.settings };
+  }
+
   save(partial: Partial<SaveData>): void {
     this.data = migrate({ ...this.data, ...partial });
+    this.writeStorage(this.data);
+  }
+
+  saveSettings(settings: Partial<SettingsData>): void {
+    this.data.settings = { ...this.data.settings, ...settings };
     this.writeStorage(this.data);
   }
 
