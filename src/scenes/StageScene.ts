@@ -6,19 +6,20 @@ import { InputSystem } from "../systems/InputSystem";
 import { CameraSystem } from "../systems/CameraSystem";
 import { WeaponSystem } from "../systems/WeaponSystem";
 import { CollisionSystem } from "../systems/CollisionSystem";
+import { SpawnSystem } from "../systems/SpawnSystem";
 import { MachineGun } from "../weapons/MachineGun";
 import { SpreadGun } from "../weapons/SpreadGun";
 import { LaserGun } from "../weapons/LaserGun";
 import { FireGun } from "../weapons/FireGun";
-import { EnemyFactory } from "../entities/enemies/EnemyFactory";
-import { Pickup, PickupType } from "../entities/pickups/Pickup";
-import { PickupFactory } from "../entities/pickups/PickupFactory";
+import { Pickup } from "../entities/pickups/Pickup";
+import { getStageConfig, StageConfig } from "../data/StageData";
 
 export class StageScene extends Phaser.Scene {
   private inputSystem!: InputSystem;
   private cameraSystem!: CameraSystem;
   private weaponSystem!: WeaponSystem;
   private collisionSystem!: CollisionSystem;
+  private spawnSystem!: SpawnSystem;
   private player1!: Player;
   private player2?: Player;
   private ground!: Phaser.Physics.Arcade.StaticGroup;
@@ -31,7 +32,8 @@ export class StageScene extends Phaser.Scene {
   private laserGun!: LaserGun;
   private fireGun!: FireGun;
   private pickups!: Phaser.Physics.Arcade.Group;
-  // private _stageId: string; // unused for now, will be used for stage-specific logic
+  private stageConfig: StageConfig | null = null;
+  private stageId = "stage1";
   private checkpoint?: { x: number; y: number };
   private bossTriggered = false;
 
@@ -42,14 +44,28 @@ export class StageScene extends Phaser.Scene {
 
   init(data: { stageId: string; playerCount: number; checkpoint?: { x: number; y: number } }): void {
     console.log(`[StageScene] Starting ${data.stageId} with ${data.playerCount} player(s)`);
+    this.stageId = data.stageId;
     this.playerCount = data.playerCount;
     this.checkpoint = data.checkpoint;
     this.bossTriggered = false;
+    this.stageConfig = getStageConfig(data.stageId) ?? null;
+    if (!this.stageConfig) {
+      console.error(`[StageScene] Unknown stage: ${data.stageId}`);
+    }
   }
 
   create(): void {
-    // Create test level geometry
-    this.createTestLevel();
+    const config = this.stageConfig;
+    if (!config) {
+      this.scene.start("mainmenu");
+      return;
+    }
+
+    // Set background color based on stage theme
+    this.cameras.main.setBackgroundColor(config.theme.skyColor);
+
+    // Create level geometry from stage data
+    this.createLevelFromData(config);
 
     // Initialize systems
     this.inputSystem = new InputSystem(this);
@@ -58,23 +74,42 @@ export class StageScene extends Phaser.Scene {
     this.collisionSystem = new CollisionSystem(this);
 
     // Set camera bounds to level size
-    this.cameraSystem.setLevelBounds(new Phaser.Geom.Rectangle(0, 0, 8000, 600));
+    this.cameraSystem.setLevelBounds(new Phaser.Geom.Rectangle(0, 0, config.width, config.height));
 
     // Create players first so combat systems can reference them
-    this.createPlayers();
-    
+    this.createPlayers(config);
+
     // Set up combat systems
-    this.setupCombat();
-    
+    this.setupCombat(config);
+
     // Set up camera to follow players
     const players = this.playerCount === 2 ? [this.player1, this.player2!] : [this.player1];
     this.cameraSystem.setPlayers(players);
-    
+
     // Set up collisions
     this.setupCollisions();
 
+    // Set up spawn system
+    this.spawnSystem = new SpawnSystem(this, config, this.enemies, this.pickups);
+    this.spawnSystem.spawnPickups();
+
     // Launch HUD overlay
     this.scene.launch("hud", { playerCount: this.playerCount });
+
+    // Display stage name
+    const stageNameText = this.add.text(config.width / 2, 200, `STAGE ${config.id.toUpperCase()} - ${config.name}`, {
+      font: "32px monospace",
+      color: "#ffffff",
+      stroke: "#000000",
+      strokeThickness: 4,
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(999);
+    this.tweens.add({
+      targets: stageNameText,
+      alpha: 0,
+      delay: 2000,
+      duration: 500,
+      onComplete: () => stageNameText.destroy(),
+    });
 
     // Game-over check when a player dies and no one is left alive
     EventBus.on("PLAYER_DIED", () => {
@@ -84,7 +119,7 @@ export class StageScene extends Phaser.Scene {
         this.time.delayedCall(1200, () => {
           this.scene.start("gameover", {
             score: 0,
-            stageId: "stage1",
+            stageId: this.stageId,
             playerCount: this.playerCount,
             checkpoint: this.checkpoint,
           });
@@ -99,80 +134,58 @@ export class StageScene extends Phaser.Scene {
     });
   }
 
-  private createTestLevel(): void {
-    // Create ground and platforms using static physics bodies
+  private createLevelFromData(config: StageConfig): void {
     this.ground = this.physics.add.staticGroup();
     this.platforms = this.physics.add.staticGroup();
-    
-    // Main ground - full width of level
-    const groundWidth = 8000;
-    const groundHeight = 32;
-    const groundY = 568; // Near bottom of 600px screen
-    
-    // Create ground using graphics
-    const groundGraphics = this.make.graphics({ x: 0, y: 0 });
-    groundGraphics.fillStyle(0x333333, 1);
-    groundGraphics.fillRect(0, 0, groundWidth, groundHeight);
-    groundGraphics.generateTexture("ground", groundWidth, groundHeight);
-    groundGraphics.destroy();
-    
-    // Add ground segments (Phaser static bodies need individual sprites)
-    for (let x = 0; x < groundWidth; x += 100) {
-      const segment = this.ground.create(x + 50, groundY + groundHeight / 2, "ground");
-      segment.setDisplaySize(100, groundHeight);
-      segment.refreshBody();
+
+    // Create ground segments
+    for (const seg of config.groundSegments) {
+      const segWidth = Math.ceil(seg.width / 100);
+      for (let i = 0; i < segWidth; i++) {
+        const segment = this.ground.create(seg.x + i * 100 + 50, seg.y + seg.height / 2, "ground");
+        segment.setDisplaySize(100, seg.height);
+        segment.setTint(config.theme.groundColor);
+        segment.refreshBody();
+      }
     }
-    
-    // Add some platforms for jumping
-    const platformPositions = [
-      { x: 400, y: 450, width: 200 },
-      { x: 800, y: 380, width: 150 },
-      { x: 1200, y: 420, width: 250 },
-      { x: 1600, y: 300, width: 180 },
-      { x: 2000, y: 400, width: 300 },
-      { x: 2500, y: 350, width: 200 },
-      { x: 3000, y: 280, width: 220 },
-      { x: 3500, y: 380, width: 180 },
-      { x: 4000, y: 300, width: 250 },
-      { x: 4500, y: 420, width: 200 },
-      { x: 5000, y: 350, width: 300 },
-      { x: 5500, y: 280, width: 180 },
-      { x: 6000, y: 380, width: 220 },
-      { x: 6500, y: 300, width: 250 },
-      { x: 7000, y: 400, width: 200 },
-      { x: 7500, y: 320, width: 300 },
-    ];
-    
-    // Create platform texture
+
+    // Create platforms
     const platformGraphics = this.make.graphics({ x: 0, y: 0 });
-    platformGraphics.fillStyle(0x555555, 1);
+    platformGraphics.fillStyle(config.theme.platformColor, 1);
     platformGraphics.fillRect(0, 0, 100, 16);
     platformGraphics.generateTexture("platform", 100, 16);
     platformGraphics.destroy();
-    
-    for (const pos of platformPositions) {
-      const segments = Math.ceil(pos.width / 100);
+
+    for (const plat of config.platforms) {
+      const segments = Math.ceil(plat.width / 100);
       for (let i = 0; i < segments; i++) {
-        const plat = this.platforms.create(pos.x + i * 100 + 50, pos.y, "platform");
-        plat.setDisplaySize(100, 16);
-        plat.refreshBody();
+        const p = this.platforms.create(plat.x + i * 100 + 50, plat.y, "platform");
+        p.setDisplaySize(100, 16);
+        p.setTint(config.theme.platformColor);
+        p.refreshBody();
       }
     }
-    
-    // Add some visual markers
-    this.add.text(100, 100, "STAGE 1 - TEST LEVEL", { font: "24px monospace", color: "#ffffff" }).setScrollFactor(0);
-    this.add.text(100, 130, "Arrow Keys/WASD: Move  |  Z/Tab: Jump  |  X/Shift: Fire  |  ESC: Pause", { font: "14px monospace", color: "#aaaaaa" }).setScrollFactor(0);
-    this.add.text(100, 150, "Down: Crouch  |  Down+Jump: Prone", { font: "14px monospace", color: "#aaaaaa" }).setScrollFactor(0);
+
+    // Controls hint
+    this.add.text(100, 100, `STAGE: ${config.name}`, {
+      font: "14px monospace",
+      color: "#ffffff",
+    }).setScrollFactor(0).setDepth(999);
+
+    this.add.text(100, 120, "Arrows/WASD: Move | Z/Tab: Jump | X/Shift: Fire | Down: Crouch | ESC: Pause", {
+      font: "12px monospace",
+      color: "#aaaaaa",
+    }).setScrollFactor(0).setDepth(999);
   }
 
-  private createPlayers(): void {
-    const startX = this.checkpoint?.x ?? 100;
-    const startY = this.checkpoint?.y ?? 500;
-    
+  private createPlayers(config: StageConfig): void {
+    const startX = this.checkpoint?.x ?? config.playerStart.x;
+    const startY = this.checkpoint?.y ?? config.playerStart.y;
+
     // Player 1
     const p1Input = this.inputSystem.getPlayer1Input();
     this.player1 = new Player(this, startX, startY, 1, p1Input);
-    
+
     // Player 2 (if 2 player mode)
     if (this.playerCount === 2) {
       const p2Input = this.inputSystem.getPlayer2Input();
@@ -180,11 +193,11 @@ export class StageScene extends Phaser.Scene {
     }
   }
 
-  private setupCombat(): void {
-    // Create bullet group with pooled bullets for MachineGun
+  private setupCombat(config: StageConfig): void {
+    // Create bullet group with pooled bullets
     this.bullets = this.physics.add.group({
       defaultKey: "machinegun_bullet",
-      maxSize: 60,
+      maxSize: config.enemyPoolSize * 5,
       runChildUpdate: true,
     });
 
@@ -209,18 +222,6 @@ export class StageScene extends Phaser.Scene {
 
     // Set up weapon system for P1
     this.weaponSystem.handleInput(this.player1);
-
-    // Spawn test enemies using EnemyFactory
-    this.spawnEnemy("soldier", 600, 500);
-    this.spawnEnemy("soldier", 900, 500);
-    this.spawnEnemy("sniper", 1200, 500);
-    this.spawnEnemy("turret", 1500, 500);
-    this.spawnEnemy("alien", 1800, 300);
-
-    // Spawn test pickups
-    this.spawnPickup(400, 500, "spreadgun");
-    this.spawnPickup(1000, 500, "lasergun");
-    this.spawnPickup(1400, 500, "firegun");
 
     // Set up collisions
     this.setupCollisions();
@@ -257,17 +258,6 @@ export class StageScene extends Phaser.Scene {
     });
   }
 
-  private spawnEnemy(type: string, x: number, y: number): void {
-    const enemy = EnemyFactory.create(type, this, x, y);
-    enemy.activate();
-    this.enemies.add(enemy);
-  }
-
-  private spawnPickup(x: number, y: number, type: PickupType): void {
-    const pickup = PickupFactory.create(this, x, y, type);
-    this.pickups.add(pickup);
-  }
-
   private setupCollisions(): void {
     // Player 1 collisions
     this.physics.add.collider(this.player1, this.ground, () => {
@@ -285,53 +275,44 @@ export class StageScene extends Phaser.Scene {
       this.physics.add.collider(this.player2, this.platforms, () => {
         this.player2!.setGrounded(true);
       });
-
-      // Player-player collision (optional - for now they pass through each other)
-      // this.physics.add.collider(this.player1, this.player2);
     }
 
     // World bounds collision for ground detection
-    this.physics.world.setBounds(0, 0, 8000, 600, true, true, true, false);
+    const config = this.stageConfig!;
+    this.physics.world.setBounds(0, 0, config.width, config.height, true, true, true, false);
   }
 
-  update(time: number, delta: number): void {
+  update(_time: number, delta: number): void {
     this.inputSystem.update();
     this.cameraSystem.update();
-    this.player1.update(time, delta);
+    this.player1.update(_time, delta);
     if (this.player2) {
-      this.player2.update(time, delta);
+      this.player2.update(_time, delta);
     }
     this.player1.setGrounded(false);
     if (this.player2) {
       this.player2.setGrounded(false);
     }
 
+    // Update spawn system
+    if (this.spawnSystem) {
+      this.spawnSystem.update(this.cameras.main.scrollX);
+    }
+
     this.checkBossTrigger();
-    this.checkStageCompletion();
   }
 
   private checkBossTrigger(): void {
-    if (this.bossTriggered || !this.player1.active) return;
+    const config = this.stageConfig;
+    if (!config || this.bossTriggered || !this.player1.active) return;
     const p1 = this.player1.body as Phaser.Physics.Arcade.Body;
-    if (p1 && p1.x > 7000) {
+    if (p1 && p1.x > config.bossTriggerX) {
       this.bossTriggered = true;
       const checkpoint = { x: p1.x, y: p1.y };
       this.scene.start("boss", {
-        stageId: "stage1",
-        bossId: "stage1-boss",
+        stageId: this.stageId,
+        bossId: config.bossId,
         playerState: { playerCount: this.playerCount, checkpoint },
-      });
-    }
-  }
-
-  private checkStageCompletion(): void {
-    if (this.bossTriggered) return;
-    if (this.enemies.countActive(true) === 0) {
-      this.bossTriggered = true;
-      this.scene.start("boss", {
-        stageId: "stage1",
-        bossId: "stage1-boss",
-        playerState: { playerCount: this.playerCount, checkpoint: { x: 100, y: 500 } },
       });
     }
   }

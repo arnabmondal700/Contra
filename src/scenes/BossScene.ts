@@ -1,39 +1,50 @@
 // scenes/BossScene.ts
 import Phaser from "phaser";
-import { Stage1Boss } from "../entities/boss/Stage1Boss";
+import { Boss } from "../entities/boss/Boss";
+import { BossFactory } from "../entities/boss/BossFactory";
 import { CollisionSystem } from "../systems/CollisionSystem";
 import { CameraSystem } from "../systems/CameraSystem";
 import { WeaponSystem } from "../systems/WeaponSystem";
 import { InputSystem } from "../systems/InputSystem";
 import { Player } from "../entities/player/Player";
 import { EventBus } from "../core/EventBus";
+import { getStageConfig } from "../data/StageData";
 
 export class BossScene extends Phaser.Scene {
   private collisionSystem!: CollisionSystem;
   private cameraSystem!: CameraSystem;
   private weaponSystem!: WeaponSystem;
   private inputSystem!: InputSystem;
-  private boss!: Stage1Boss;
+  private boss!: Boss;
   private players: Player[] = [];
   private bullets!: Phaser.Physics.Arcade.Group;
   private bossBullets!: Phaser.Physics.Arcade.Group;
   private arenaBounds!: Phaser.Physics.Arcade.StaticGroup;
   private playerCount = 1;
+  private stageId = "stage1";
+  private bossId = "stage1-boss";
+  private checkpoint?: { x: number; y: number };
 
   constructor() {
     super({ key: "boss" });
   }
 
-  init(data: { stageId: string; bossId: string; playerState: unknown }): void {
-    this.playerCount = (data.playerState as { playerCount?: number } | undefined)?.playerCount ?? 1;
-    console.log(`[BossScene] Starting boss ${data.bossId} for ${data.stageId}`);
+  init(data: { stageId: string; bossId: string; playerState: { playerCount?: number; checkpoint?: { x: number; y: number } } }): void {
+    this.stageId = data.stageId;
+    this.bossId = data.bossId;
+    this.playerCount = data.playerState?.playerCount ?? 1;
+    this.checkpoint = data.playerState?.checkpoint;
+    console.log(`[BossScene] Starting ${data.bossId} for ${data.stageId}`);
   }
 
   create(): void {
     const { width, height } = this.cameras.main;
 
+    // Get stage config for theme
+    const stageConfig = getStageConfig(this.stageId);
+
     // Boss arena background
-    this.add.rectangle(width / 2, height / 2, width, height, 0x1a1a1a);
+    this.add.rectangle(width / 2, height / 2, width, height, stageConfig?.theme.skyColor ?? 0x1a1a1a);
 
     // Arena borders (visual)
     this.add.rectangle(width / 2, 8, width, 16, 0x444444);
@@ -54,8 +65,9 @@ export class BossScene extends Phaser.Scene {
     // Spawn players from scene registry or default positions
     this.spawnPlayers();
 
-    // Spawn boss
-    this.boss = new Stage1Boss(this, width / 2, 100);
+    // Spawn boss using factory
+    const bossSpawn = stageConfig?.bossSpawn ?? { x: width / 2, y: 100 };
+    this.boss = BossFactory.create(this.bossId, this, bossSpawn.x, bossSpawn.y);
 
     // Create bullet groups
     this.bullets = this.physics.add.group({ defaultKey: "machinegun_bullet", maxSize: 60, runChildUpdate: true });
@@ -75,17 +87,6 @@ export class BossScene extends Phaser.Scene {
     // Bullet vs terrain
     this.collisionSystem.registerTerrainCollisions(this.bullets, this.arenaBounds);
     this.collisionSystem.registerTerrainCollisions(this.bossBullets, this.arenaBounds);
-
-    // Boss bullet vs player overlap is handled above via registerBulletPlayerCollisions
-
-    // Custom bullet-enemy overlap for boss specifically
-    this.physics.add.overlap(this.bullets, this.add.group(), (bulletObj, enemyObj) => {
-      const bullet = bulletObj as Phaser.Physics.Arcade.Sprite;
-      const enemy = enemyObj as Phaser.Physics.Arcade.Sprite;
-      if (bullet.active && enemy.active) {
-        // Will be handled by CollisionSystem registration below
-      }
-    });
 
     // Register boss collision with player bullets directly
     this.physics.add.overlap(
@@ -111,8 +112,8 @@ export class BossScene extends Phaser.Scene {
     // Listen for boss defeat
     EventBus.on("BOSS_DEFEATED", () => {
       this.time.delayedCall(1000, () => {
-        const score = this.players[0].getLives() * 1000; // placeholder score calc
-        this.scene.start("victory", { score, stageId: "stage1" });
+        const score = (this.players[0]?.getLives() ?? 0) * 1000; // placeholder score calc
+        this.scene.start("victory", { score, stageId: this.stageId });
       });
     });
 
@@ -128,8 +129,9 @@ export class BossScene extends Phaser.Scene {
         this.time.delayedCall(1500, () => {
           this.scene.start("gameover", {
             score: 0,
-            stageId: "stage1",
-            checkpoint: { x: width / 2, y: 100 },
+            stageId: this.stageId,
+            playerCount: this.playerCount,
+            checkpoint: this.checkpoint,
           });
         });
       }
