@@ -2,12 +2,19 @@
 import Phaser from "phaser";
 
 export class GameOverScene extends Phaser.Scene {
+  private stageId = "stage1";
+  private checkpoint: { x: number; y: number } | undefined;
+  private playerCount = 1;
+
   constructor() {
     super({ key: "gameover" });
   }
 
-  init(data: { score: number; stageId: string; checkpoint?: unknown }): void {
-    console.log(`[GameOverScene] Game over on ${data.stageId} with score ${data.score}`);
+  init(data: { stageId: string; playerCount?: number; checkpoint?: { x: number; y: number } }): void {
+    this.stageId = data.stageId;
+    this.playerCount = data.playerCount ?? 1;
+    this.checkpoint = data.checkpoint;
+    console.log(`[GameOverScene] Game over on ${this.stageId} with ${this.playerCount} player(s)`);
   }
 
   create(): void {
@@ -31,7 +38,15 @@ export class GameOverScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     this.input.keyboard!.once("keydown-ENTER", () => {
-      this.scene.start("stage", { stageId: "stage1", playerCount: 1 });
+      if (this.checkpoint) {
+        this.scene.start("stage", {
+          stageId: this.stageId,
+          playerCount: this.playerCount,
+          checkpoint: this.checkpoint,
+        });
+      } else {
+        this.scene.start("stage", { stageId: this.stageId, playerCount: this.playerCount });
+      }
     });
 
     this.input.keyboard!.once("keydown-ESC", () => {
