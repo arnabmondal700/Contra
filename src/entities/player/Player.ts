@@ -5,6 +5,7 @@ import { StateMachine } from "../../core/StateMachine";
 import { InputState } from "../../types/InputState";
 import { IWeapon } from "../../types/IWeapon";
 import { EventBus } from "../../core/EventBus";
+import { PHYSICS_CONFIG } from "../../config/PhysicsConfig";
 import {
   IdleState,
   RunState,
@@ -55,8 +56,9 @@ export class Player extends BaseEntity {
     this.inputState = inputState;
 
     const body = this.body as Phaser.Physics.Arcade.Body;
-    body.setSize(16, 32);
-    body.setOffset(8, 8);
+    const standing = PHYSICS_CONFIG.player.standingBody;
+    body.setSize(standing.width, standing.height);
+    body.setOffset(standing.offsetX, standing.offsetY);
     body.setCollideWorldBounds(true);
     body.maxVelocity.set(200, 600);
 

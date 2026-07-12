@@ -67,6 +67,7 @@ export class SpreadGun implements IWeapon {
       const radians = Phaser.Math.DegToRad(deg);
       const rotatedDirection = direction.clone().rotate(radians);
       const projectile = this.pool.acquire();
+      projectile.setPool(this.pool);
       projectile.setOwner(owner);
       projectile.setPosition(origin.x, origin.y);
       projectile.launch(origin, rotatedDirection);

@@ -2,6 +2,7 @@
 import Phaser from "phaser";
 import { Enemy } from "./Enemy";
 import { IAiBehavior } from "../../ai/IAiBehavior";
+import { IEntity } from "../../types/IEntity";
 
 export class SniperEnemy extends Enemy {
   private readonly attackCooldownMs = 2000;
@@ -35,7 +36,7 @@ export class SniperEnemy extends Enemy {
     return this.isAiming && this.aimDuration <= 0;
   }
 
-  update(_time: number, delta: number): void {
+  update(_time: number, delta: number, target: IEntity | null = null): void {
     if (this.attackCooldown > 0) {
       this.attackCooldown -= delta;
     }
@@ -45,6 +46,6 @@ export class SniperEnemy extends Enemy {
         this.isAiming = false;
       }
     }
-    super.update(_time, delta);
+    super.update(_time, delta, target);
   }
 }

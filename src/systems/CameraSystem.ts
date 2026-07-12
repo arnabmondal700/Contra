@@ -58,6 +58,8 @@ export class CameraSystem {
     
     this.camera.startFollow(player, true, lerp.x, lerp.y);
     this.camera.setDeadzone(deadzone.x, deadzone.y);
+    // Reset zoom toward 1 when going back to single player
+    this.camera.zoom = Phaser.Math.Linear(this.camera.zoom, 1, 0.05);
   }
 
   private followMultiplePlayers(players: Player[]): void {

@@ -2,6 +2,7 @@
 import Phaser from "phaser";
 import { EventBus } from "../core/EventBus";
 import { Player } from "../entities/player/Player";
+import { Enemy } from "../entities/enemies/Enemy";
 import { InputSystem } from "../systems/InputSystem";
 import { CameraSystem } from "../systems/CameraSystem";
 import { WeaponSystem } from "../systems/WeaponSystem";
@@ -26,6 +27,7 @@ export class StageScene extends Phaser.Scene {
   private ground!: Phaser.Physics.Arcade.StaticGroup;
   private platforms!: Phaser.Physics.Arcade.StaticGroup;
   private bullets!: Phaser.Physics.Arcade.Group;
+  private enemyBullets!: Phaser.Physics.Arcade.Group;
   private enemies!: Phaser.Physics.Arcade.Group;
   private playerCount: number;
   private machineGun!: MachineGun;
@@ -210,9 +212,16 @@ export class StageScene extends Phaser.Scene {
       runChildUpdate: true,
     });
 
+    // Create enemy bullet group
+    this.enemyBullets = this.physics.add.group({
+      defaultKey: "machinegun_bullet",
+      maxSize: config.enemyPoolSize * 3,
+      runChildUpdate: true,
+    });
+
     // Create enemy group
     this.enemies = this.physics.add.group({
-      runChildUpdate: true,
+      runChildUpdate: false,
     });
 
     // Create pickup group
@@ -229,8 +238,16 @@ export class StageScene extends Phaser.Scene {
     // Give P1 MachineGun by default
     this.player1.setWeapon(this.machineGun);
 
-    // Set up weapon system for P1
+    // Give P2 MachineGun if 2 player mode
+    if (this.player2) {
+      this.player2.setWeapon(this.machineGun);
+    }
+
+    // Set up weapon system input handling
     this.weaponSystem.handleInput(this.player1);
+    if (this.player2) {
+      this.weaponSystem.handleInput(this.player2);
+    }
 
     // Set up collisions
     this.setupCollisions();
@@ -238,33 +255,47 @@ export class StageScene extends Phaser.Scene {
 
     // Set up bullet-enemy collisions
     this.collisionSystem.registerBulletEnemyCollisions(this.bullets, this.enemies);
+
+    // Set up enemy bullet-player collisions
+    this.collisionSystem.registerBulletPlayerCollisions(this.enemyBullets, this.player1);
+    if (this.player2) {
+      this.collisionSystem.registerBulletPlayerCollisions(this.enemyBullets, this.player2);
+    }
+
+    // Set up terrain collisions for enemy bullets
+    this.collisionSystem.registerTerrainCollisions(this.enemyBullets, this.ground);
+    this.collisionSystem.registerTerrainCollisions(this.enemyBullets, this.platforms);
   }
 
   private setupPickupCollisions(): void {
-    this.physics.add.overlap(this.player1, this.pickups, (_player, pickup) => {
-      const pickupEntity = pickup as unknown as Pickup;
-      const type = pickupEntity.getPickupType();
-      let weapon;
-      switch (type) {
-        case "spreadgun":
-          weapon = this.spreadGun;
-          break;
-        case "lasergun":
-          weapon = this.laserGun;
-          break;
-        case "firegun":
-          weapon = this.fireGun;
-          break;
-        case "machinegun":
-        default:
-          weapon = this.machineGun;
-          break;
-      }
-      this.player1.setWeapon(weapon);
-      this.weaponSystem.handleInput(this.player1);
-      pickupEntity.destroy();
-      console.log(`[StageScene] P1 collected ${type}`);
-    });
+    const players: Player[] = this.player2 ? [this.player1, this.player2] : [this.player1];
+
+    for (const player of players) {
+      this.physics.add.overlap(player, this.pickups, (_player, pickup) => {
+        const pickupEntity = pickup as unknown as Pickup;
+        const type = pickupEntity.getPickupType();
+        let weapon;
+        switch (type) {
+          case "spreadgun":
+            weapon = this.spreadGun;
+            break;
+          case "lasergun":
+            weapon = this.laserGun;
+            break;
+          case "firegun":
+            weapon = this.fireGun;
+            break;
+          case "machinegun":
+          default:
+            weapon = this.machineGun;
+            break;
+        }
+        player.setWeapon(weapon);
+        this.weaponSystem.handleInput(player);
+        pickupEntity.destroy();
+        console.log(`[StageScene] P${player.getPlayerId()} collected ${type}`);
+      });
+    }
   }
 
   private setupCollisions(): void {
@@ -295,8 +326,10 @@ export class StageScene extends Phaser.Scene {
     this.inputSystem.update();
     this.cameraSystem.update();
     this.player1.update(_time, delta);
+    this.weaponSystem.handleInput(this.player1);
     if (this.player2) {
       this.player2.update(_time, delta);
+      this.weaponSystem.handleInput(this.player2);
     }
     this.player1.setGrounded(false);
     if (this.player2) {
@@ -306,6 +339,17 @@ export class StageScene extends Phaser.Scene {
     // Update spawn system
     if (this.spawnSystem) {
       this.spawnSystem.update(this.cameras.main.scrollX);
+    }
+
+    // Update enemies with player target
+    const target = this.player1.active ? this.player1 : (this.player2?.active ? this.player2! : null);
+    if (target) {
+      this.enemies.getChildren().forEach((child) => {
+        const enemy = child as Enemy;
+        if (enemy.isEnemyActive()) {
+          enemy.update(_time, delta, target);
+        }
+      });
     }
 
     this.checkBossTrigger();

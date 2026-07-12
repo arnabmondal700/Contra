@@ -17,6 +17,7 @@ export abstract class Boss extends BaseEntity {
   protected readonly phaseThresholds: number[];
   protected fsm!: StateMachine<Boss>;
   private phaseIndex = 0;
+  private stageId = "stage1";
 
   constructor(
     scene: Phaser.Scene,
@@ -31,10 +32,14 @@ export abstract class Boss extends BaseEntity {
     this.phaseThresholds = config.phaseThresholds;
   }
 
+  setStageId(stageId: string): void {
+    this.stageId = stageId;
+  }
+
   protected die(): void {
     if (this.isDead) return;
     this.isDead = true;
-    EventBus.emit("BOSS_DEFEATED", { bossId: this.id, stageId: "stage1" });
+    EventBus.emit("BOSS_DEFEATED", { bossId: this.id, stageId: this.stageId });
     EventBus.emit("ENTITY_DIED", { entity: this });
   }
 

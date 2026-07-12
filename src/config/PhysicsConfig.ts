@@ -8,6 +8,7 @@ export const PHYSICS_CONFIG = {
     proneSpeed: 30,
     climbSpeed: 100,
     maxFallSpeed: 600,
+    standingBody: { width: 16, height: 32, offsetX: 8, offsetY: 8 },
   },
   enemy: {
     speed: 80,

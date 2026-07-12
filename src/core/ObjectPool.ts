@@ -21,9 +21,11 @@ export class ObjectPool<T extends Phaser.GameObjects.GameObject> {
   }
 
   acquire(): T {
-    const obj =
-      this.pool.find((o) => !(o as unknown as Poolable).active) ??
-      this.factory();
+    let obj = this.pool.find((o) => !(o as unknown as Poolable).active);
+    if (!obj) {
+      obj = this.factory();
+      this.pool.push(obj);
+    }
     (obj as unknown as Poolable).setActive(true).setVisible(true);
     return obj;
   }

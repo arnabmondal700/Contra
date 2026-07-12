@@ -2,6 +2,7 @@
 import Phaser from "phaser";
 import { Enemy } from "./Enemy";
 import { IAiBehavior } from "../../ai/IAiBehavior";
+import { IEntity } from "../../types/IEntity";
 
 export class SoldierEnemy extends Enemy {
   private patrolMinX: number;
@@ -51,11 +52,11 @@ export class SoldierEnemy extends Enemy {
     this.attackCooldown = this.attackCooldownMs;
   }
 
-  update(_time: number, delta: number): void {
+  update(_time: number, delta: number, target: IEntity | null = null): void {
     if (this.attackCooldown > 0) {
       this.attackCooldown -= delta;
     }
     
-    super.update(_time, delta);
+    super.update(_time, delta, target);
   }
 }

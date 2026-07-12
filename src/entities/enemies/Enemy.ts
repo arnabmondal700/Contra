@@ -96,11 +96,11 @@ export class Enemy extends BaseEntity {
     this.deactivate();
   }
 
-  update(_time: number, delta: number): void {
+  update(_time: number, delta: number, target: IEntity | null = null): void {
     if (!this.isActive) return;
     
     // Update AI behavior
-    this.behavior.update(this, null as unknown as IEntity, delta);
+    this.behavior.update(this, target, delta);
     
     // Update state machine
     this.fsm.update(delta);

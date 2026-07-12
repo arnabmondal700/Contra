@@ -71,6 +71,7 @@ export class BossScene extends Phaser.Scene {
     // Spawn boss using factory
     const bossSpawn = stageConfig?.bossSpawn ?? { x: width / 2, y: 100 };
     this.boss = BossFactory.create(this.bossId, this, bossSpawn.x, bossSpawn.y);
+    this.boss.setStageId(this.stageId);
 
     // Create bullet groups
     this.bullets = this.physics.add.group({ defaultKey: "machinegun_bullet", maxSize: 60, runChildUpdate: true });
@@ -169,6 +170,7 @@ export class BossScene extends Phaser.Scene {
   update(time: number, delta: number): void {
     for (const player of this.players) {
       player.update(time, delta);
+      this.weaponSystem.handleInput(player);
     }
     if (this.boss.active) {
       this.boss.update(time, delta);

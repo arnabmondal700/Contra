@@ -2,6 +2,7 @@
 import Phaser from "phaser";
 import { Enemy } from "./Enemy";
 import { IAiBehavior } from "../../ai/IAiBehavior";
+import { IEntity } from "../../types/IEntity";
 
 export class TurretEnemy extends Enemy {
   private readonly attackCooldownMs = 1500;
@@ -33,10 +34,10 @@ export class TurretEnemy extends Enemy {
     return this.rotationSpeed;
   }
 
-  update(_time: number, delta: number): void {
+  update(_time: number, delta: number, target: IEntity | null = null): void {
     if (this.attackCooldown > 0) {
       this.attackCooldown -= delta;
     }
-    super.update(_time, delta);
+    super.update(_time, delta, target);
   }
 }

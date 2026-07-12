@@ -30,8 +30,8 @@ export class CollisionSystem {
         // Damage the enemy
         enemyEntity.takeDamage(damage, owner);
         
-        // Destroy the bullet
-        projectile.destroy();
+        // Return bullet to pool
+        projectile.deactivate();
       }
     );
   }
@@ -52,8 +52,8 @@ export class CollisionSystem {
         // Damage the player
         playerObj.takeDamage(1, projectile.getOwner());
         
-        // Destroy the bullet
-        projectile.destroy();
+        // Return bullet to pool
+        projectile.deactivate();
       }
     );
   }
@@ -65,7 +65,7 @@ export class CollisionSystem {
     this.scene.physics.add.collider(group, terrain, (gameObject: unknown) => {
       const obj = gameObject as Projectile;
       if (obj.active) {
-        obj.destroy();
+        obj.deactivate();
       }
     });
   }

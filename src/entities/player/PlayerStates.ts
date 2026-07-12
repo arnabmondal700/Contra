@@ -173,8 +173,8 @@ export class CrouchState implements IState<Player> {
     const body = player.body as Phaser.Physics.Arcade.Body;
 
     if (!input.down || input.up) {
-      body.setSize(16, 32);
-      body.setOffset(0, 0);
+      body.setSize(PHYSICS_CONFIG.player.standingBody.width, PHYSICS_CONFIG.player.standingBody.height);
+      body.setOffset(PHYSICS_CONFIG.player.standingBody.offsetX, PHYSICS_CONFIG.player.standingBody.offsetY);
       if (input.left || input.right) {
         player.getFsm().transition("run");
       } else {
@@ -184,8 +184,8 @@ export class CrouchState implements IState<Player> {
     }
 
     if (input.jump && player.canJump()) {
-      body.setSize(16, 32);
-      body.setOffset(0, 0);
+      body.setSize(PHYSICS_CONFIG.player.standingBody.width, PHYSICS_CONFIG.player.standingBody.height);
+      body.setOffset(PHYSICS_CONFIG.player.standingBody.offsetX, PHYSICS_CONFIG.player.standingBody.offsetY);
       player.getFsm().transition("jump");
       return;
     }
@@ -211,8 +211,8 @@ export class CrouchState implements IState<Player> {
 
   exit(_player: Player): void {
     const body = _player.body as Phaser.Physics.Arcade.Body;
-    body.setSize(16, 32);
-    body.setOffset(0, 0);
+    body.setSize(PHYSICS_CONFIG.player.standingBody.width, PHYSICS_CONFIG.player.standingBody.height);
+    body.setOffset(PHYSICS_CONFIG.player.standingBody.offsetX, PHYSICS_CONFIG.player.standingBody.offsetY);
   }
 }
 
@@ -230,8 +230,8 @@ export class ProneState implements IState<Player> {
     const body = player.body as Phaser.Physics.Arcade.Body;
 
     if (!input.down || input.up) {
-      body.setSize(16, 32);
-      body.setOffset(0, 0);
+      body.setSize(PHYSICS_CONFIG.player.standingBody.width, PHYSICS_CONFIG.player.standingBody.height);
+      body.setOffset(PHYSICS_CONFIG.player.standingBody.offsetX, PHYSICS_CONFIG.player.standingBody.offsetY);
       if (input.left || input.right) {
         player.getFsm().transition("run");
       } else {
@@ -253,8 +253,8 @@ export class ProneState implements IState<Player> {
 
   exit(player: Player): void {
     const body = player.body as Phaser.Physics.Arcade.Body;
-    body.setSize(16, 32);
-    body.setOffset(0, 0);
+    body.setSize(PHYSICS_CONFIG.player.standingBody.width, PHYSICS_CONFIG.player.standingBody.height);
+    body.setOffset(PHYSICS_CONFIG.player.standingBody.offsetX, PHYSICS_CONFIG.player.standingBody.offsetY);
   }
 }
 

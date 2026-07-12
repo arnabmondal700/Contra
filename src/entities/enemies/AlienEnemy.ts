@@ -2,6 +2,7 @@
 import Phaser from "phaser";
 import { Enemy } from "./Enemy";
 import { IAiBehavior } from "../../ai/IAiBehavior";
+import { IEntity } from "../../types/IEntity";
 
 export class AlienEnemy extends Enemy {
   private readonly attackCooldownMs = 1800;
@@ -39,7 +40,7 @@ export class AlienEnemy extends Enemy {
     return this.floatFrequency;
   }
 
-  update(_time: number, delta: number): void {
+  update(_time: number, delta: number, target: IEntity | null = null): void {
     if (this.attackCooldown > 0) {
       this.attackCooldown -= delta;
     }
@@ -47,6 +48,6 @@ export class AlienEnemy extends Enemy {
       const offset = Math.sin(_time * this.floatFrequency) * this.floatAmplitude;
       this.y = this.baseY + offset;
     }
-    super.update(_time, delta);
+    super.update(_time, delta, target);
   }
 }

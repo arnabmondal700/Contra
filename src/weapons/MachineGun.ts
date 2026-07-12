@@ -63,6 +63,7 @@ export class MachineGun implements IWeapon {
     this.lastFired = now;
 
     const projectile = this.pool.acquire();
+    projectile.setPool(this.pool);
     projectile.setOwner(owner);
     projectile.setPosition(origin.x, origin.y);
     projectile.launch(origin, direction);

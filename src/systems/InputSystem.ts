@@ -27,6 +27,8 @@ export class InputSystem {
     down: Phaser.GameObjects.Zone;
     fire: Phaser.GameObjects.Zone;
   };
+  private touchBgs: Phaser.GameObjects.Graphics[] = [];
+  private touchLabels: Phaser.GameObjects.Text[] = [];
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
@@ -68,7 +70,7 @@ export class InputSystem {
 
   private setupGamepad(): void {
     // Listen for gamepad connections
-    this.scene.input.gamepad!.once("connected", (gamepad: Phaser.Input.Gamepad.Gamepad) => {
+    this.scene.input.gamepad!.on("connected", (gamepad: Phaser.Input.Gamepad.Gamepad) => {
       if (!this.gamepad1) {
         this.gamepad1 = gamepad;
         console.log("[InputSystem] Gamepad 1 connected:", gamepad.id);
@@ -78,7 +80,7 @@ export class InputSystem {
       }
     });
 
-    this.scene.input.gamepad!.once("disconnected", (gamepad: Phaser.Input.Gamepad.Gamepad) => {
+    this.scene.input.gamepad!.on("disconnected", (gamepad: Phaser.Input.Gamepad.Gamepad) => {
       if (this.gamepad1 === gamepad) {
         this.gamepad1 = null;
         console.log("[InputSystem] Gamepad 1 disconnected");
@@ -211,6 +213,7 @@ export class InputSystem {
     label: string
   ): Phaser.GameObjects.Zone {
     const zone = this.scene.add.zone(x + w / 2, y + h / 2, w, h) as Phaser.GameObjects.Zone;
+    zone.setInteractive();
     const bg = this.scene.add.graphics();
     bg.fillStyle(style.fillColor, style.fillAlpha);
     bg.fillRect(x, y, w, h);
@@ -219,7 +222,7 @@ export class InputSystem {
     zone.setScrollFactor(0);
     zone.setDepth(999);
 
-    this.scene.add
+    const labelText = this.scene.add
       .text(x + w / 2, y + h / 2, label, {
         font: "14px monospace",
         color: "#ffffff",
@@ -227,6 +230,8 @@ export class InputSystem {
       .setOrigin(0.5)
       .setScrollFactor(0)
       .setDepth(1000);
+    this.touchBgs.push(bg);
+    this.touchLabels.push(labelText);
 
     zone.on("pointerdown", () => {
       this.player1Input[this.zoneToInput(label)] = true;
@@ -263,6 +268,10 @@ export class InputSystem {
     Object.values(this.touchControls).forEach((zone) => {
       zone.destroy();
     });
+    this.touchBgs.forEach((bg) => bg.destroy());
+    this.touchLabels.forEach((label) => label.destroy());
+    this.touchBgs = [];
+    this.touchLabels = [];
     this.touchControls = undefined;
   }
 }

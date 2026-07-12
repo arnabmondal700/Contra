@@ -2,6 +2,7 @@
 import Phaser from "phaser";
 import { BaseEntity } from "../BaseEntity";
 import { IEntity } from "../../types/IEntity";
+import { ObjectPool } from "../../core/ObjectPool";
 
 export class Projectile extends BaseEntity {
   private owner: IEntity;
@@ -10,6 +11,7 @@ export class Projectile extends BaseEntity {
   private direction: Phaser.Math.Vector2;
   private maxDistance = 800; // Max travel distance
   private traveledDistance = 0;
+  private pool?: ObjectPool<Projectile>;
 
   constructor(
     scene: Phaser.Scene,
@@ -60,7 +62,7 @@ export class Projectile extends BaseEntity {
 
     // Destroy if traveled max distance
     if (this.traveledDistance >= this.maxDistance) {
-      this.destroy();
+      this.deactivate();
     }
 
     // Check if out of camera bounds (with margin)
@@ -71,7 +73,7 @@ export class Projectile extends BaseEntity {
       this.y < camera.worldView.y - 100 ||
       this.y > camera.worldView.y + camera.worldView.height + 100
     ) {
-      this.destroy();
+      this.deactivate();
     }
   }
 
@@ -85,5 +87,17 @@ export class Projectile extends BaseEntity {
 
   setOwner(owner: IEntity): void {
     this.owner = owner;
+  }
+
+  setPool(pool: ObjectPool<Projectile>): void {
+    this.pool = pool;
+  }
+
+  deactivate(): void {
+    if (this.pool) {
+      this.pool.release(this);
+    } else {
+      this.destroy();
+    }
   }
 }
