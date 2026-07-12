@@ -26,11 +26,11 @@ export class Player extends BaseEntity {
   private currentWeapon: IWeapon | null = null;
   private facingRight = true;
   private isGrounded = false;
-  // private wasGrounded = false; // unused
   private jumpBufferTimer = 0;
   private readonly jumpBufferDuration = 100;
   private coyoteTimer = 0;
   private readonly coyoteDuration = 100;
+  private playerId: number;
 
   getCoyoteTimer(): number {
     return this.coyoteTimer;
@@ -39,7 +39,6 @@ export class Player extends BaseEntity {
   setCoyoteTimer(value: number): void {
     this.coyoteTimer = value;
   }
-  private playerId: number;
 
   constructor(
     scene: Phaser.Scene,
@@ -48,27 +47,23 @@ export class Player extends BaseEntity {
     playerId: number,
     inputState: InputState
   ) {
-    // Create a placeholder texture if none exists
-    const texture = Player.createPlaceholderTexture(scene, `player-${playerId}`);
-    
-    super(scene, x, y, texture, 1);
-    
+    const textureKey = scene.textures.exists("player") ? "player" : Player.createPlaceholderTexture(scene, `player-${playerId}`);
+
+    super(scene, x, y, textureKey, 1);
+
     this.playerId = playerId;
     this.inputState = inputState;
-    
-    // Physics body setup
+
     const body = this.body as Phaser.Physics.Arcade.Body;
     body.setSize(16, 32);
-    body.setOffset(0, 0);
+    body.setOffset(8, 8);
     body.setCollideWorldBounds(true);
     body.maxVelocity.set(200, 600);
-    
-    // State machine setup
+
     this.fsm = new StateMachine(this);
     this.setupStates();
     this.fsm.transition("idle");
-    
-    // Listen for ground collision via world bounds
+
     body.onWorldBounds = true;
     body.world.on(Phaser.Physics.Arcade.Events.WORLD_BOUNDS, (body: Phaser.Physics.Arcade.Body) => {
       if (body.gameObject === this && body.blocked.down) {
@@ -150,7 +145,7 @@ export class Player extends BaseEntity {
 
   setGrounded(grounded: boolean): void {
     this.isGrounded = grounded;
-    
+
     if (grounded) {
       this.coyoteTimer = this.coyoteDuration;
     }
@@ -177,7 +172,6 @@ export class Player extends BaseEntity {
   }
 
   update(_time: number, delta: number): void {
-    // Update timers
     if (this.invincibilityTimer > 0) {
       this.invincibilityTimer -= delta;
     }
@@ -187,44 +181,27 @@ export class Player extends BaseEntity {
     if (this.jumpBufferTimer > 0) {
       this.jumpBufferTimer -= delta;
     }
-    
-    // Update state machine
+
     this.fsm.update(delta);
-    
-    // Apply horizontal velocity based on input
-    this.handleMovement(delta);
   }
 
-  private handleMovement(_delta: number): void {
-    const body = this.body as Phaser.Physics.Arcade.Body;
-    const speed = 180; // PHYSICS_CONFIG.player.speed
-    
-    if (this.inputState.left && !this.inputState.right) {
-      body.setVelocityX(-speed);
-      this.setFacingRight(false);
-    } else if (this.inputState.right && !this.inputState.left) {
-      body.setVelocityX(speed);
-      this.setFacingRight(true);
-    } else {
-      // No horizontal input - apply friction/stop
-      body.setVelocityX(0);
+  safePlay(key: string, ignoreIfPlaying?: boolean): void {
+    if (this.anims.exists(key)) {
+      super.play(key, ignoreIfPlaying);
     }
   }
 
   private static createPlaceholderTexture(scene: Phaser.Scene, key: string): string {
     if (scene.textures.exists(key)) return key;
-    
+
     const graphics = scene.make.graphics({ x: 0, y: 0 });
-    // Body
     graphics.fillStyle(0x00aaff, 1);
     graphics.fillRect(0, 0, 16, 32);
-    // Head
     graphics.fillStyle(0xffccaa, 1);
     graphics.fillRect(2, -4, 12, 12);
-    // Gun
     graphics.fillStyle(0x333333, 1);
     graphics.fillRect(16, 8, 8, 4);
-    
+
     graphics.generateTexture(key, 24, 32);
     graphics.destroy();
     return key;
