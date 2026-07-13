@@ -15,24 +15,25 @@ export class Pickup extends BaseEntity {
     y: number,
     pickupType: PickupType
   ) {
-    super(scene, x, y, "pickup", 1);
+    // Resolve a per-type texture key BEFORE calling super(), so the sprite initializes with a valid texture
+    const textureKey = Pickup.ensureTexture(scene, pickupType);
+    super(scene, x, y, textureKey, 1);
     this.pickupType = pickupType;
     this.spawnTime = scene.time.now;
-    this.createPlaceholderTexture();
-    scene.add.existing(this);
-    scene.physics.add.existing(this);
+    // BaseEntity's constructor (called via super() above) already does scene.add.existing / scene.physics.add.existing
+
     const body = this.body as Phaser.Physics.Arcade.Body;
     body.setAllowGravity(false);
     body.setImmovable(true);
     this.setActive(true).setVisible(true);
   }
 
-  private createPlaceholderTexture(): void {
-    const key = "pickup";
-    if (this.scene.textures.exists(key)) return;
+  private static ensureTexture(scene: Phaser.Scene, pickupType: PickupType): string {
+    const key = `pickup_${pickupType}`; // per-type key instead of one shared "pickup" key
+    if (scene.textures.exists(key)) return key;
 
-    const graphics = this.scene.make.graphics({ x: 0, y: 0 });
-    switch (this.pickupType) {
+    const graphics = scene.make.graphics({ x: 0, y: 0 });
+    switch (pickupType) {
       case "spreadgun":
         graphics.fillStyle(0x00ff00, 1);
         break;
@@ -50,6 +51,7 @@ export class Pickup extends BaseEntity {
     graphics.fillRect(0, 0, 12, 12);
     graphics.generateTexture(key, 12, 12);
     graphics.destroy();
+    return key;
   }
 
   getPickupType(): PickupType {

@@ -188,8 +188,18 @@ export class Player extends BaseEntity {
   }
 
   safePlay(key: string, ignoreIfPlaying?: boolean): void {
-    if (this.anims.exists(key)) {
-      super.play(key, ignoreIfPlaying);
+    if (!this.anims.exists(key)) return; // Only play if animation exists
+    super.play(key, ignoreIfPlaying);
+  }
+
+  takeDamage(amount: number, source?: import("../../types/IEntity").IEntity): void {
+    if (this.isInvincible() || this.fsm.state === "dead") return;
+    super.takeDamage(amount, source);
+
+    if (this.getHealth() <= 0) {
+      this.fsm.transition("dead");
+    } else {
+      this.fsm.transition("hurt");
     }
   }
 

@@ -110,4 +110,13 @@ export function generatePlaceholderPlayerSpritesheet(scene: Phaser.Scene, textur
 
   graphics.generateTexture(textureKey, canvasWidth, canvasHeight);
   graphics.destroy();
+
+  // NEW — generateTexture() only bakes ONE full-canvas frame. Without this loop,
+  // every player-* animation has zero real frames and silently never plays.
+  const texture = scene.textures.get(textureKey);
+  for (let i = 0; i < totalFrames; i++) {
+    const col = i % columns;
+    const row = Math.floor(i / columns);
+    texture.add(i, 0, col * frameWidth, row * frameHeight, frameWidth, frameHeight);
+  }
 }

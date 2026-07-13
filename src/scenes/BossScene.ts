@@ -10,6 +10,7 @@ import { Player } from "../entities/player/Player";
 import { EventBus } from "../core/EventBus";
 import { getStageConfig } from "../data/StageData";
 import { AudioManager } from "../managers/AudioManager";
+import { MachineGun } from "../weapons/MachineGun";
 
 export class BossScene extends Phaser.Scene {
   private collisionSystem!: CollisionSystem;
@@ -25,6 +26,7 @@ export class BossScene extends Phaser.Scene {
   private stageId = "stage1";
   private bossId = "stage1-boss";
   private checkpoint?: { x: number; y: number };
+  private machineGun!: MachineGun;
 
   constructor() {
     super({ key: "boss" });
@@ -76,6 +78,13 @@ export class BossScene extends Phaser.Scene {
     // Create bullet groups
     this.bullets = this.physics.add.group({ defaultKey: "machinegun_bullet", maxSize: 60, runChildUpdate: true });
     this.bossBullets = this.physics.add.group({ defaultKey: "machinegun_bullet", maxSize: 30, runChildUpdate: true });
+
+    // NEW — create and wire a weapon for players (boss scene was missing this entirely)
+    this.machineGun = new MachineGun(this);
+    this.machineGun.setBulletGroup(this.bullets);
+    for (const player of this.players) {
+      player.setWeapon(this.machineGun);
+    }
 
     // Set up collisions
     this.collisionSystem.registerBulletPlayerCollisions(this.bossBullets, this.players[0]);

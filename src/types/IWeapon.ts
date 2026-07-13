@@ -9,4 +9,5 @@ export interface IWeapon {
   fire(origin: Phaser.Math.Vector2, direction: Phaser.Math.Vector2, owner: IEntity): void;
   reload(): void;
   canFire(): boolean;
+  setBulletGroup(group: Phaser.Physics.Arcade.Group): void;
 }

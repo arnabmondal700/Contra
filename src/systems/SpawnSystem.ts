@@ -4,6 +4,7 @@ import { EnemyFactory } from "../entities/enemies/EnemyFactory";
 import { PickupFactory } from "../entities/pickups/PickupFactory";
 import { StageConfig } from "../data/StageData";
 import { Enemy } from "../entities/enemies/Enemy";
+import { MachineGun } from "../weapons/MachineGun";
 
 export class SpawnSystem {
   private scene: Phaser.Scene;
@@ -13,17 +14,20 @@ export class SpawnSystem {
   private nextSpawnIndex = 0;
   private activeEnemyCount = 0;
   private spawnedEnemies: Set<number> = new Set();
+  private enemyWeapon: MachineGun;
 
   constructor(
     scene: Phaser.Scene,
     stageConfig: StageConfig,
     enemies: Phaser.Physics.Arcade.Group,
-    pickups: Phaser.Physics.Arcade.Group
+    pickups: Phaser.Physics.Arcade.Group,
+    enemyWeapon: MachineGun
   ) {
     this.scene = scene;
     this.stageConfig = stageConfig;
     this.enemies = enemies;
     this.pickups = pickups;
+    this.enemyWeapon = enemyWeapon;
   }
 
   update(cameraX: number): void {
@@ -65,6 +69,8 @@ export class SpawnSystem {
     try {
       const enemy = EnemyFactory.create(type, this.scene, x, y);
       enemy.activate();
+      // NEW — give each enemy a fire callback so it can shoot at the player
+      enemy.setFireCallback((origin, dir) => this.enemyWeapon.fire(origin, dir, enemy));
       this.enemies.add(enemy);
       this.activeEnemyCount++;
     } catch (e) {

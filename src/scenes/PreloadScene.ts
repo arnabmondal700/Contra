@@ -1,5 +1,6 @@
 // scenes/PreloadScene.ts
 import Phaser from "phaser";
+import { createPlayerAnimations, generatePlaceholderPlayerSpritesheet } from "../config/PlayerAnimations";
 
 export class PreloadScene extends Phaser.Scene {
   private progressBar!: Phaser.GameObjects.Graphics;
@@ -38,6 +39,10 @@ export class PreloadScene extends Phaser.Scene {
   }
 
   create(): void {
+    // Generate the player spritesheet and create animations once, before any Player is created.
+    generatePlaceholderPlayerSpritesheet(this, "player");
+    createPlayerAnimations(this, "player");
+
     console.log("[PreloadScene] Assets loaded. Transitioning to MainMenuScene...");
     this.scene.start("mainmenu");
   }

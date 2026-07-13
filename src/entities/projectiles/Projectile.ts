@@ -44,8 +44,10 @@ export class Projectile extends BaseEntity {
     this.setPosition(origin.x, origin.y);
     this.direction = direction.clone().normalize();
     this.traveledDistance = 0;
-    
+
     const body = this.body as Phaser.Physics.Arcade.Body;
+    body.enable = true; // Re-enable body after pool release
+    body.allowGravity = false; // Re-assert no gravity — pool recycling may reset it
     body.setVelocity(this.direction.x * this.speed, this.direction.y * this.speed);
     
     // Rotate to face direction

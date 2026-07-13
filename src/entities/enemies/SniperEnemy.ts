@@ -3,6 +3,7 @@ import Phaser from "phaser";
 import { Enemy } from "./Enemy";
 import { IAiBehavior } from "../../ai/IAiBehavior";
 import { IEntity } from "../../types/IEntity";
+import { PHYSICS_CONFIG } from "../../config/PhysicsConfig";
 
 export class SniperEnemy extends Enemy {
   private readonly attackCooldownMs = 2000;
@@ -10,6 +11,7 @@ export class SniperEnemy extends Enemy {
   private aimDuration = 0;
   private readonly aimDelayMs = 600;
   private isAiming = false;
+  private readonly attackRange = PHYSICS_CONFIG.enemy.attackRange;
 
   constructor(scene: Phaser.Scene, x: number, y: number, behavior: IAiBehavior) {
     super(scene, x, y, "sniper_enemy", 2, 150, behavior);
@@ -40,12 +42,21 @@ export class SniperEnemy extends Enemy {
     if (this.attackCooldown > 0) {
       this.attackCooldown -= delta;
     }
+
     if (this.isAiming) {
       this.aimDuration -= delta;
-      if (this.aimDuration <= 0) {
+      if (this.isAimComplete()) {
+        if (target) this.fireAt(target);
+        this.resetAttackCooldown();
         this.isAiming = false;
       }
+    } else if (target && this.canAttack()) {
+      const targetSprite = target as unknown as Phaser.Physics.Arcade.Sprite;
+      if (Math.abs(targetSprite.x - this.x) <= this.attackRange) {
+        this.startAiming(); // telegraphs the shot before it fires
+      }
     }
+
     super.update(_time, delta, target);
   }
 }

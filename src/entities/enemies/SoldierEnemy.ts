@@ -56,6 +56,15 @@ export class SoldierEnemy extends Enemy {
     if (this.attackCooldown > 0) {
       this.attackCooldown -= delta;
     }
+
+    // NEW — fire at the player when in range
+    if (target && this.canAttack()) {
+      const targetSprite = target as unknown as Phaser.Physics.Arcade.Sprite;
+      if (Math.abs(targetSprite.x - this.x) <= this.attackRange) {
+        this.fireAt(target);
+        this.resetAttackCooldown();
+      }
+    }
     
     super.update(_time, delta, target);
   }

@@ -34,6 +34,7 @@ export class StageScene extends Phaser.Scene {
   private spreadGun!: SpreadGun;
   private laserGun!: LaserGun;
   private fireGun!: FireGun;
+  private enemyWeapon!: MachineGun; // NEW
   private pickups!: Phaser.Physics.Arcade.Group;
   private stageConfig: StageConfig | null = null;
   private stageId = "stage1";
@@ -92,11 +93,10 @@ export class StageScene extends Phaser.Scene {
     const players = this.playerCount === 2 ? [this.player1, this.player2!] : [this.player1];
     this.cameraSystem.setPlayers(players);
 
-    // Set up collisions
-    this.setupCollisions();
+    // Set up collisions — REMOVED duplicate call, setupCombat() already does this
 
     // Set up spawn system
-    this.spawnSystem = new SpawnSystem(this, config, this.enemies, this.pickups);
+    this.spawnSystem = new SpawnSystem(this, config, this.enemies, this.pickups, this.enemyWeapon);
     this.spawnSystem.spawnPickups();
 
     // Launch touch controls on touch devices
@@ -235,6 +235,15 @@ export class StageScene extends Phaser.Scene {
     this.laserGun = new LaserGun(this);
     this.fireGun = new FireGun(this);
 
+    // NEW — wire weapons to the bullet group so physics.add.overlap can find them
+    for (const weapon of [this.machineGun, this.spreadGun, this.laserGun, this.fireGun]) {
+      weapon.setBulletGroup(this.bullets);
+    }
+
+    // NEW — create enemy weapon bound to enemyBullets
+    this.enemyWeapon = new MachineGun(this);
+    this.enemyWeapon.setBulletGroup(this.enemyBullets);
+
     // Give P1 MachineGun by default
     this.player1.setWeapon(this.machineGun);
 
@@ -317,9 +326,30 @@ export class StageScene extends Phaser.Scene {
       });
     }
 
-    // World bounds collision for ground detection
+    // NEW — enemies had no floor collision at all
+    this.physics.add.collider(this.enemies, this.ground);
+    this.physics.add.collider(this.enemies, this.platforms);
+
+    // NEW — player contact damage with enemies
+    this.physics.add.overlap(this.player1, this.enemies, (playerObj, enemyObj) => {
+      const p = playerObj as Player;
+      const e = enemyObj as Enemy;
+      if (!e.isEnemyActive() || p.isInvincible()) return;
+      p.takeDamage(1, e);
+    });
+
+    if (this.player2) {
+      this.physics.add.overlap(this.player2, this.enemies, (playerObj, enemyObj) => {
+        const p = playerObj as Player;
+        const e = enemyObj as Enemy;
+        if (!e.isEnemyActive() || p.isInvincible()) return;
+        p.takeDamage(1, e);
+      });
+    }
+
+    // World bounds — CHANGED: bottom was false, now true to stop enemies (and players) from falling through
     const config = this.stageConfig!;
-    this.physics.world.setBounds(0, 0, config.width, config.height, true, true, true, false);
+    this.physics.world.setBounds(0, 0, config.width, config.height, true, true, true, true);
   }
 
   update(_time: number, delta: number): void {

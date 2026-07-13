@@ -16,6 +16,7 @@ export class SpreadGun implements IWeapon {
   private lastFired = 0;
   private scene: Phaser.Scene;
   private projectileTexture: string;
+  private bulletGroup?: Phaser.Physics.Arcade.Group;
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
@@ -36,9 +37,14 @@ export class SpreadGun implements IWeapon {
         projectile.setActive(false).setVisible(false);
         const body = projectile.body as Phaser.Physics.Arcade.Body;
         body.setVelocity(0, 0);
+        body.enable = false;
       },
       PHYSICS_CONFIG.collision.maxPooledBullets
     );
+  }
+
+  setBulletGroup(group: Phaser.Physics.Arcade.Group): void {
+    this.bulletGroup = group;
   }
 
   private createProjectileTexture(): string {
@@ -71,6 +77,7 @@ export class SpreadGun implements IWeapon {
       projectile.setOwner(owner);
       projectile.setPosition(origin.x, origin.y);
       projectile.launch(origin, rotatedDirection);
+      this.bulletGroup?.add(projectile);
     }
   }
 

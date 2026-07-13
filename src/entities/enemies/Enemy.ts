@@ -13,6 +13,7 @@ export class Enemy extends BaseEntity {
   protected facingRight = true;
   private isActive = false;
   private textureKey: string;
+  protected fireCallback?: (origin: Phaser.Math.Vector2, direction: Phaser.Math.Vector2) => void;
 
   constructor(
     scene: Phaser.Scene,
@@ -84,6 +85,18 @@ export class Enemy extends BaseEntity {
 
   isFacingRight(): boolean {
     return this.facingRight;
+  }
+
+  setFireCallback(cb: (origin: Phaser.Math.Vector2, direction: Phaser.Math.Vector2) => void): void {
+    this.fireCallback = cb;
+  }
+
+  protected fireAt(target: IEntity): void {
+    if (!this.fireCallback) return;
+    const targetSprite = target as unknown as Phaser.Physics.Arcade.Sprite;
+    const origin = new Phaser.Math.Vector2(this.x, this.y);
+    const direction = new Phaser.Math.Vector2(targetSprite.x - this.x, targetSprite.y - this.y).normalize();
+    this.fireCallback(origin, direction);
   }
 
   protected die(): void {
